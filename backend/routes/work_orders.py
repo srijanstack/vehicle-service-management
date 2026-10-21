@@ -11,22 +11,7 @@ from backend.models import Vehicle, WorkOrder
 router = APIRouter(prefix="/work-orders", tags=["Work Orders"])
 
 
-class WorkOrderCreate(BaseModel):
-    vehicle_id: int = Field(gt=0)
-    component_name: str = Field(min_length=1, max_length=100)
-    issue_description: str = Field(min_length=1)
-    priority: str = "Medium"
-    status: str = "Pending"
-    due_date: date | None = None
-    assigned_to: str | None = None
-    remarks: str | None = None
-
-
-class WorkOrderUpdate(BaseModel):
-    status: str | None = None
-    action_taken: str | None = None
-    completion_date: date | None = None
-    remarks: str | None = None
+from backend.schemas import WorkOrderCreate, WorkOrderUpdate
 
 
 from backend.routes.service import normalize_component_name

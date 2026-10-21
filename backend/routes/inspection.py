@@ -11,15 +11,7 @@ from backend.models import Vehicle, Inspection
 router = APIRouter(prefix="/inspections", tags=["Inspections"])
 
 
-class InspectionCreate(BaseModel):
-    vehicle_id: int = Field(gt=0)
-    component_name: str = Field(min_length=1, max_length=100)
-    inspection_date: date
-    condition: str = Field(min_length=1, max_length=50)
-    defect_description: str | None = None
-    inspection_decision: str = Field(min_length=1, max_length=100)
-    recommended_action: str | None = None
-    inspected_by: str | None = None
+from backend.schemas import InspectionCreate
 
 
 @router.post("/", status_code=201)

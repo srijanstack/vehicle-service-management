@@ -37,3 +37,31 @@ def test_component_aliases():
     assert "brake pads & discs" in COMPONENT_ALIASES["front brake pads"]
     assert "battery visual & terminal check" in COMPONENT_ALIASES
     assert "tyre pressure check" in COMPONENT_ALIASES
+
+
+def test_schemas_and_aliases():
+    from backend.schemas import (
+        VehicleCreate, VehicleResponse, VehicleSchema,
+        MaintenanceRuleCreate, MaintenanceRuleResponse, MaintenanceRuleSchema, MaintenanceSchema,
+        ServiceRecordCreate, ServiceRecordResponse, ServiceRecordSchema,
+        InspectionCreate, InspectionResponse, InspectionSchema,
+        WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderSchema,
+    )
+
+    assert VehicleSchema == VehicleResponse
+    assert MaintenanceRuleSchema == MaintenanceRuleResponse
+    assert MaintenanceSchema == MaintenanceRuleResponse
+    assert ServiceRecordSchema == ServiceRecordResponse
+    assert InspectionSchema == InspectionResponse
+    assert WorkOrderSchema == WorkOrderResponse
+
+    rule = MaintenanceRuleCreate(
+        vehicle_model="Scorpio",
+        component="Engine Oil",
+        suggested_time_interval="6 months",
+        interval_months=6,
+        inspection_required=1
+    )
+    assert rule.inspection_required == 1
+    assert rule.suggested_time_interval == "6 months"
+

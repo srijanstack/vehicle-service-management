@@ -12,13 +12,16 @@ from backend.routes.service import router as service_router
 from backend.routes.inspection import router as inspection_router 
 from backend.routes.work_orders import router as work_orders_router
 
+from backend.seed_rules import seed_rules
+
 app = FastAPI(
     title="Army Vehicle Maintenance Portal",
     description="Vehicle registration and maintenance management system",
     version="1.0.0"
 )
-# Create tables on startup if they don't exist yet.
+# Create tables and auto-seed standard maintenance rules on startup if they don't exist yet.
 Base.metadata.create_all(bind=engine)
+seed_rules()
 
 # Allow the Vite dev server (and any origins listed in CORS_ORIGINS) to call the API.
 _origins = os.getenv(

@@ -14,18 +14,7 @@ router = APIRouter(
 )
 
 
-class ServiceRecordCreate(BaseModel):
-    vehicle_id: int = Field(gt=0)
-    service_date: date
-    odometer_km: int = Field(ge=0)
-    component_name: str = Field(min_length=1, max_length=100)
-    service_type: str = Field(min_length=1, max_length=100)
-    work_description: str
-    parts_replaced: str | None = None
-    parts_cost: int = Field(default=0, ge=0)
-    labour_cost: int = Field(default=0, ge=0)
-    performed_by: str | None = None
-    remarks: str | None = None
+from backend.schemas import ServiceRecordCreate
 
 
 COMPONENT_NAME_MAP = {

@@ -40,18 +40,7 @@ def parse_time_interval(val: str | None, default_num: int | None = None) -> int:
     return default_num or 0
 
 
-class MaintenanceRuleCreate(BaseModel):
-    vehicle_model: str = Field(min_length=1, max_length=100)
-    component: str | None = None
-    component_name: str | None = None
-    service_task: str | None = None
-    suggested_km_interval: str | None = None
-    suggested_time_interval: str | None = None
-    interval_km: int | None = Field(default=None, ge=0)
-    interval_months: int | None = Field(default=None, ge=0)
-    inspection_required: int = 1
-    is_active: int = 1
-    notes: str | None = None
+from backend.schemas import MaintenanceRuleCreate
 
 
 @router.post("/", status_code=201)
