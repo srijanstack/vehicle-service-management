@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db, engine, Base
 from backend.models import Vehicle
-from backend.schemas import VehicleCreate, VehicleResponse
+from backend.schemas import VehicleCreate, VehicleResponse, VehicleOdometerUpdate, VehicleUpdate
 from backend.routes.service import router as service_router
 from backend.routes.inspection import router as inspection_router 
 from backend.routes.work_orders import router as work_orders_router
@@ -123,3 +123,65 @@ def get_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     if not vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found.")
     return vehicle
+
+
+@app.patch("/vehicles/{vehicle_id}/odometer", response_model=VehicleResponse)
+def update_vehicle_odometer(
+    vehicle_id: int,
+    data: VehicleOdometerUpdate,
+    db: Session = Depends(get_db)
+):
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found.")
+
+    vehicle.current_odometer_km = data.current_odometer_km
+    try:
+        db.commit()
+        db.refresh(vehicle)
+    except Exception:
+        db.rollback()
+        raise
+    return vehicle
+
+
+@app.patch("/vehicles/{vehicle_id}", response_model=VehicleResponse)
+@app.put("/vehicles/{vehicle_id}", response_model=VehicleResponse)
+def update_vehicle(
+    vehicle_id: int,
+    data: VehicleUpdate,
+    db: Session = Depends(get_db)
+):
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found.")
+
+    update_dict = data.model_dump(exclude_unset=True)
+    if "registration_number" in update_dict and update_dict["registration_number"]:
+        reg = update_dict["registration_number"].strip().upper()
+        existing = db.query(Vehicle).filter(
+            Vehicle.registration_number == reg,
+            Vehicle.id != vehicle_id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="This vehicle registration number already exists."
+            )
+        update_dict["registration_number"] = reg
+
+    for field in ["vehicle_name", "manufacturer", "model", "unit_name"]:
+        if field in update_dict and isinstance(update_dict[field], str):
+            update_dict[field] = update_dict[field].strip()
+
+    for key, value in update_dict.items():
+        setattr(vehicle, key, value)
+
+    try:
+        db.commit()
+        db.refresh(vehicle)
+    except Exception:
+        db.rollback()
+        raise
+    return vehicle
+

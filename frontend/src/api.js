@@ -50,6 +50,9 @@ export const api = {
   listVehicles: () => request('/vehicles/'),
   getVehicle: (id) => request(`/vehicles/${id}`),
   createVehicle: (data) => request('/vehicles/', { method: 'POST', body: clean(data) }),
+  updateVehicleOdometer: (id, current_odometer_km) =>
+    request(`/vehicles/${id}/odometer`, { method: 'PATCH', body: { current_odometer_km: Number(current_odometer_km) } }),
+  updateVehicle: (id, data) => request(`/vehicles/${id}`, { method: 'PATCH', body: clean(data) }),
 
   listServiceRecords: (vehicle_id) => request('/service-records/', { params: { vehicle_id } }),
   createServiceRecord: (data) => request('/service-records/', { method: 'POST', body: clean(data) }),
@@ -59,7 +62,8 @@ export const api = {
 
   listWorkOrders: (vehicle_id) => request('/work-orders/', { params: { vehicle_id } }),
   createWorkOrder: (data) => request('/work-orders/', { method: 'POST', body: clean(data) }),
-  updateWorkOrder: (id, data) => request(`/work-orders/${id}`, { method: 'PUT', body: data }),
+  updateWorkOrder: (id, data) => request(`/work-orders/${id}`, { method: 'PATCH', body: data }),
+  deleteWorkOrder: (id) => request(`/work-orders/${id}`, { method: 'DELETE' }),
   generateWorkOrders: (vehicle_id) => request(`/work-orders/from-maintenance/${vehicle_id}`, { method: 'POST' }),
 
   listRules: () => request('/maintenance-rules/'),

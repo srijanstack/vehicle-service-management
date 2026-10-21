@@ -62,6 +62,7 @@ def get_work_orders(
 
 
 @router.put("/{work_order_id}")
+@router.patch("/{work_order_id}")
 def update_work_order(
     work_order_id: int,
     update_data: WorkOrderUpdate,
@@ -81,15 +82,41 @@ def update_work_order(
     for field, value in update_values.items():
         setattr(work_order, field, value)
 
+    # If completed and completion_date not provided, auto-set to today
+    if work_order.status == "Completed" and not work_order.completion_date:
+        work_order.completion_date = date.today()
+
+    # If all work orders for this vehicle are resolved, restore vehicle status if it was Under Maintenance
+    vehicle = db.query(Vehicle).filter(Vehicle.id == work_order.vehicle_id).first()
+    if vehicle and vehicle.status == "Under Maintenance":
+        active_orders = (
+            db.query(WorkOrder)
+            .filter(
+                WorkOrder.vehicle_id == vehicle.id,
+                WorkOrder.id != work_order.id,
+                WorkOrder.status.in_(["Pending", "In Progress"])
+            )
+            .first()
+        )
+        if not active_orders and work_order.status in ["Completed", "Cancelled"]:
+            vehicle.status = "Active"
+
     db.commit()
     db.refresh(work_order)
 
     return {
         "message": "Work order updated successfully",
         "id": work_order.id,
+        "vehicle_id": work_order.vehicle_id,
+        "component_name": work_order.component_name,
+        "issue_description": work_order.issue_description,
+        "priority": work_order.priority,
         "status": work_order.status,
+        "due_date": work_order.due_date,
+        "assigned_to": work_order.assigned_to,
         "completion_date": work_order.completion_date,
-        "action_taken": work_order.action_taken
+        "action_taken": work_order.action_taken,
+        "remarks": work_order.remarks,
     }
 
 
@@ -154,3 +181,43 @@ def create_work_orders_from_maintenance(
         "created_count": len(created_orders),
         "created_work_orders": created_orders
     }
+
+
+@router.delete("/{work_order_id}", status_code=200)
+def delete_work_order(
+    work_order_id: int,
+    db: Session = Depends(get_db)
+):
+    work_order = (
+        db.query(WorkOrder)
+        .filter(WorkOrder.id == work_order_id)
+        .first()
+    )
+
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found.")
+
+    vehicle_id = work_order.vehicle_id
+    db.delete(work_order)
+    db.commit()
+
+    # If vehicle was Under Maintenance, restore to Active if no pending orders remain
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
+    if vehicle and vehicle.status == "Under Maintenance":
+        active_orders = (
+            db.query(WorkOrder)
+            .filter(
+                WorkOrder.vehicle_id == vehicle.id,
+                WorkOrder.status.in_(["Pending", "In Progress"])
+            )
+            .first()
+        )
+        if not active_orders:
+            vehicle.status = "Active"
+            db.commit()
+
+    return {
+        "message": f"Work order #{work_order_id} deleted successfully",
+        "id": work_order_id
+    }
+

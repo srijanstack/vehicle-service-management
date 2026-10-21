@@ -24,6 +24,24 @@ class VehicleCreate(VehicleBase):
     pass
 
 
+class VehicleOdometerUpdate(BaseModel):
+    current_odometer_km: int = Field(ge=0, description="Current odometer reading in kilometers")
+
+
+class VehicleUpdate(BaseModel):
+    registration_number: str | None = Field(default=None, min_length=1, max_length=50)
+    vehicle_name: str | None = Field(default=None, min_length=1, max_length=100)
+    vehicle_type: str | None = None
+    manufacturer: str | None = None
+    model: str | None = None
+    manufacture_year: int | None = Field(default=None, ge=1900, le=2100)
+    unit_name: str | None = None
+    current_odometer_km: int | None = Field(default=None, ge=0)
+    last_service_date: date | None = None
+    next_service_due_date: date | None = None
+    status: str | None = None
+
+
 class VehicleResponse(VehicleBase):
     id: int
     created_at: datetime | None = None
@@ -148,8 +166,12 @@ class WorkOrderCreate(WorkOrderBase):
 
 class WorkOrderUpdate(BaseModel):
     status: str | None = None
-    action_taken: str | None = None
+    priority: str | None = None
+    issue_description: str | None = None
+    due_date: date | None = None
+    assigned_to: str | None = None
     completion_date: date | None = None
+    action_taken: str | None = None
     remarks: str | None = None
 
 

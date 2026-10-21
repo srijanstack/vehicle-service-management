@@ -21,6 +21,26 @@ DATABASE_URL = os.getenv(
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
 
+def ensure_database_exists():
+    """Ensure the target PostgreSQL database exists; create it if missing."""
+    if not DB_NAME or DB_NAME == "postgres":
+        return
+    try:
+        import psycopg
+        admin_conn_str = f"host={DB_HOST} port={DB_PORT} user={DB_USER} password={DB_PASSWORD} dbname=postgres"
+        with psycopg.connect(admin_conn_str, autocommit=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (DB_NAME,))
+                if not cur.fetchone():
+                    safe_db_name = DB_NAME.replace('"', '""')
+                    cur.execute(f'CREATE DATABASE "{safe_db_name}"')
+                    print(f"PostgreSQL database '{DB_NAME}' created automatically.")
+    except Exception:
+        # Proceed gracefully if user connects with a restricted role or pre-configured DB
+        pass
+
+ensure_database_exists()
+
 engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

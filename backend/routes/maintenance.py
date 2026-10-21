@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from dateutil.relativedelta import relativedelta
 from backend.database import get_db
-from backend.models import Vehicle, MaintenanceRule, ServiceRecord
+from backend.models import Vehicle, MaintenanceRule, ServiceRecord, Inspection
 from backend.rules_engine import check_maintenance_due
 
 
@@ -265,6 +266,41 @@ def check_vehicle_maintenance(
             interval_months=rule.interval_months or 0,
             today=today
         )
+
+        # Check for recent inspection on this component
+        insp_conditions = [Inspection.component_name.ilike(a) for a in aliases]
+        last_inspection = (
+            db.query(Inspection)
+            .filter(
+                Inspection.vehicle_id == vehicle_id,
+                or_(*insp_conditions)
+            )
+            .order_by(
+                Inspection.inspection_date.desc(),
+                Inspection.id.desc()
+            )
+            .first()
+        )
+
+        if last_inspection:
+            # If inspection failed or required service, and was not addressed by a subsequent service:
+            if last_inspection.inspection_decision in ["Service Required", "Fail"] or last_inspection.condition in ["Poor", "Critical"]:
+                if not last_service or last_inspection.inspection_date >= last_service.service_date:
+                    result["maintenance_due"] = True
+                    insp_reason = f"Inspection defect [{last_inspection.condition}]: {last_inspection.defect_description or last_inspection.inspection_decision}"
+                    if insp_reason not in result["reasons"]:
+                        result["reasons"].insert(0, insp_reason)
+            # If inspection passed and rule requires inspection:
+            elif last_inspection.inspection_decision in ["Pass", "Good", "Monitor"] and (rule.inspection_required == 1 or "inspect" in (rule.service_task or "").lower()):
+                if not last_service or last_inspection.inspection_date > (last_service.service_date or date(1970, 1, 1)):
+                    if rule.interval_months and rule.interval_months > 0:
+                        next_due_date = last_inspection.inspection_date + relativedelta(months=rule.interval_months)
+                        result["next_due_date"] = next_due_date.isoformat()
+                        current_day = today or date.today()
+                        result["date_due"] = current_day >= next_due_date
+                        result["maintenance_due"] = result["km_due"] or result["date_due"]
+                        if not result["date_due"]:
+                            result["reasons"] = [r for r in result["reasons"] if "Time interval" not in r]
 
         km_str = rule.suggested_km_interval or (f"{rule.interval_km:,} km" if rule.interval_km else "0 km")
         time_str = rule.suggested_time_interval or (f"{rule.interval_months} month{'s' if rule.interval_months != 1 else ''}" if rule.interval_months else "—")
